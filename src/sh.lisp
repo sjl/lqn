@@ -9,10 +9,11 @@
 (defun opt/all?    (opts) (member :-a opts :test #'eq))
 (defun opt/nils?   (opts) (member :-z opts :test #'eq))
 (defun opt/jsnopt? (opts) (member :-j opts :test #'eq))
+(defun opt/csvopt? (opts) (member :-c opts :test #'eq))
 (defun opt/ldnopt? (opts) (member :-l opts :test #'eq))
 (defun opt/txtopt? (opts) (member :-t opts :test #'eq))
 (defun opt/outfmt? (opts &optional (d :json))
-  (cond ((opt/txtopt? opts) :txt) ((opt/ldnopt? opts) :ldn) ((opt/jsnopt? opts) :json) (t d)))
+  (cond ((opt/txtopt? opts) :txt) ((opt/ldnopt? opts) :ldn) ((opt/jsnopt? opts) :json) ((opt/csvopt? opts) :csv) (t d)))
 
 (defmacro sh/exit-msg (i &rest rest) (declare (fixnum i))
   (declare (optimize speed))
@@ -73,6 +74,9 @@
      (prjsn (res*) (handler-case (jsnout res* :indent (opt/indent? opts) :s s)
                      (stream-error () (sh/exit-msg 0 ""))
                      (error (e) (sh/exit-msg 101 "JSON: failed to SERIALIZE:~%~%~a~&" e))))
+     (prcsv (res*) (handler-case (csvout res* :s s)
+                     (stream-error () (sh/exit-msg 0 ""))
+                     (error (e) (sh/exit-msg 101 "CSV: failed to SERIALIZE:~%~%~a~&" e))))
      (dotxt (res*) (handler-case
                      (typecase res*
                         (string (doline res*))
@@ -87,7 +91,7 @@
                       (hash-table (if (opt/jsnopt? opts) (prjsn res*) (prldn res*)))
                       (list       (prldn res*))
                       (otherwise  (prtxt res*)))))
-   (ecase (opt/outfmt? opts d) (:json (prjsn res)) (:ldn (prldn res)) (:txt (dotxt res))))))
+   (ecase (opt/outfmt? opts d) (:json (prjsn res)) (:csv (prcsv res)) (:ldn (prldn res)) (:txt (dotxt res))))))
 
 ; TODO: auto split args, handle errors
 (defun cmd (fx &rest args) (declare (string fx)) "run terminal command"

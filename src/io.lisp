@@ -65,6 +65,28 @@
   (jsnout o :s s :indent indent)
   (get-output-stream-string s))
 
+(defun csvloads (&optional (s *standard-input*) all)
+  (declare #.*opt*) "parse csv from stream; or *standard-input*"
+  (peek-char nil s) ; signal eof if necessary
+  (map 'vector (lambda (row) (coerce row 'vector)) (conserve:read-rows s)))
+(defun csvloadf (fn) (declare #.*opt* (string fn)) "parse csv from file, fn"
+  (with-open-file (f fn :direction :input)
+    (handler-case (csvloads f) (end-of-file () (warn "empty file: ~a" fn)))))
+(defun csvout (o &key (s *standard-output*) indent)
+  (declare #.*opt* (stream s) (boolean indent))
+  "stream serialized csv from o to s; or *standard-output*"
+  (format s "~&")
+  (map nil (lambda (row)
+             (conserve:write-row (map 'list (lambda (col) (princ-to-string col))
+                                      row)))
+       o)
+  (format s "~&")
+  (finish-output s))
+(defun csvstr (o &key indent (s (make-string-output-stream)))
+  (declare (boolean indent)) "serialize o as csv to string"
+  (csvout o :s s :indent indent)
+  (get-output-stream-string s))
+
 ; TODO: character keys are probably not compatible with the internal json representation?
 ; TODO: is this consistent with JSON representation in general?
 (defun ldnout (o) "serialize internal representation to readable lisp data.
